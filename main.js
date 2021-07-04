@@ -29,23 +29,23 @@ function e(selector) {
 
 function getTabs(query) {
   return new Promise((resolve) =>
-    chrome.tabs.query({ currentWindow: true, ...query }, resolve)
+    chrome.tabs.query({currentWindow: true, ...query}, resolve)
   );
 }
 
-function moveTab({ id, index }) {
-  return new Promise((resolve) => chrome.tabs.move(id, { index }, resolve));
+function moveTab({id, index}) {
+  return new Promise((resolve) => chrome.tabs.move(id, {index}, resolve));
 }
 
 function createTab() {
   return new Promise((resolve) =>
-    chrome.tabs.create({ active: true }, resolve)
+    chrome.tabs.create({active: true}, resolve)
   );
 }
 
 function selectTab(id) {
   return new Promise((resolve) =>
-    chrome.tabs.update(id, { active: true }, resolve)
+    chrome.tabs.update(id, {active: true}, resolve)
   );
 }
 
@@ -53,27 +53,32 @@ function duplicateTab(id) {
   return new Promise((resolve) => chrome.tabs.duplicate(id, resolve));
 }
 
+function pinTab(tab) {
+
+  return new Promise((resolve) => chrome.tabs.update(tab.id, {pinned: !tab.pinned}, resolve));
+}
+
 function removeTab(id) {
   return new Promise((resolve) => chrome.tabs.remove(id, resolve));
 }
 
 async function sortTabs() {
-  const tabs = await getTabs({ pinned: false });
-  const [{ index: first }] = tabs;
+  const tabs = await getTabs({pinned: false});
+  const [{index: first}] = tabs;
   let shouldReorder = false;
   const nextTabs = tabs
-    .map(({ id, url, index }) => ({
+    .map(({id, url, index}) => ({
       id,
       url,
       index,
       host: url ? new URL(url).host.split(".").slice(-2).join(".") : "___",
     }))
-    .sort(({ host: h1 }, { host: h2 }) => h1.localeCompare(h2))
-    .map(({ id, index }, i) => {
+    .sort(({host: h1}, {host: h2}) => h1.localeCompare(h2))
+    .map(({id, index}, i) => {
       if (i + first !== index) {
         shouldReorder = true;
       }
-      return { id, index: i + first };
+      return {id, index: i + first};
     });
 
   if (shouldReorder) {
@@ -122,8 +127,13 @@ async function render() {
   };
 
   e("#duplicate").onclick = async () => {
-    const [tab] = await getTabs({ active: true });
+    const [tab] = await getTabs({active: true});
     await duplicateTab(tab.id);
+  };
+
+  e("#pin").onclick = async () => {
+    const [tab] = await getTabs({active: true});
+    await pinTab(tab);
   };
 
   e("html").ondblclick = async (e) => {
@@ -190,7 +200,16 @@ async function render() {
     });
   });
 
-  chrome.tabs.onAttached.addListener(function (tabId, info) {
+  chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
+    if ('pinned' in changeInfo) {
+      const $tabs = e("#tabs");
+      $tabs.querySelectorAll(`button[data-id="${tabId}"]`).forEach(($tab) => {
+        $tab.dataset.pinned = changeInfo.pinned;
+      });
+    }
+  });
+
+  chrome.tabs.onAttached.addListener(function (tabId, _info) {
     const $tabs = e("#tabs");
     chrome.tabs.get(tabId, (tab) => {
       const $tab = createTabElement(tab);
@@ -209,7 +228,7 @@ async function render() {
     });
   });
 
-  chrome.tabs.onMoved.addListener(async function (tabId, { toIndex }) {
+  chrome.tabs.onMoved.addListener(async function (_tabId, {_toIndex}) {
     const $tabs = e("#tabs");
     const tabs = await getTabs();
     tabs.forEach((tab) => {
@@ -220,7 +239,7 @@ async function render() {
     });
   });
 
-  chrome.tabs.onActivated.addListener(function ({ tabId, windowId }) {
+  chrome.tabs.onActivated.addListener(function ({tabId, _windowId}) {
     const $tabs = e("#tabs");
     $tabs
       .querySelectorAll(`button[data-active="true"]:not([data-id="${tabId}"])`)
