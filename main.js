@@ -67,12 +67,14 @@ async function sortTabs() {
   const [{index: first}] = tabs;
   let shouldReorder = false;
   const nextTabs = tabs
-    .map(({id, url, index}) => ({
+    .map(({id, url, index, title}) => ({
       id,
       url,
       index,
       host: url ? new URL(url).host.split(".").slice(-2).join(".") : "___",
+      title
     }))
+    .sort(({title: t1}, {title: t2}) => t1.localeCompare(t2))
     .sort(({host: h1}, {host: h2}) => h1.localeCompare(h2))
     .map(({id, index}, i) => {
       if (i + first !== index) {
