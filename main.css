@@ -263,6 +263,27 @@ ul > li > a {
   animation: pulse 400ms linear infinite;
 }
 
+#tabs [data-audible="true"] {
+  animation: dance 600ms ease infinite;
+}
+
+#tabs [data-muted="true"] {
+  color: #3A4552;
+  filter: grayscale(100%) brightness(2);
+}
+
+@keyframes dance {
+  0% {
+    background-position-y: 0.0em;
+  }
+  33% {
+    background-position-y: 0.3em;
+  }
+  66% {
+    background-position-y: -0.3em;
+  }
+}
+
 @keyframes pulse {
   0% {
     background-position-x: 0.3em;
