@@ -117,7 +117,7 @@ function createTabElement(tab) {
     : `url("chrome://favicon/${tab.url}")`;
 
   const $title = document.createElement("span");
-  $title.innerHTML = tab.title;
+  $title.textContent = tab.title;
   $tab.appendChild($title);
 
   return $tab;
@@ -184,7 +184,7 @@ async function render() {
       if ("title" in info) {
         $tab.title = info.title;
         $tab.querySelectorAll("span").forEach(($title) => {
-          $title.innerHTML = info.title;
+          $title.textContent = info.title;
         });
       }
 
