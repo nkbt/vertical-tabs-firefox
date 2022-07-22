@@ -1,2 +1,2 @@
-# opera-tabs
-Vertical tabs extension for opera
+# vertical-tabs-firefox
+Vertical tabs extension for Firefox

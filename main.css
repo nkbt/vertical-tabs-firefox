@@ -143,18 +143,24 @@ body {
 body {
   font-family: "Helvetica", "Verdana", sans-serif;
   font-size: 12px;
-  background: #3A4552;
+  /*background: #3A4552;*/
 }
 
 a {
-  transition: color 100ms;
+  font-size: 0.8em;
+  transition: color 100ms, background-color 500ms;
   text-decoration: none;
-  color: #ccc;
+  text-transform: uppercase;
+  color: inherit;
+  /*color: #ccc;*/
+  /*cursor: default;*/
+  background-color: rgba(0, 0, 0, 0);
 }
 
 a:hover {
-  cursor: default;
-  color: #fff;
+  background-color: rgba(0, 0, 0, 0.2);
+
+  /*color: #fff;*/
 }
 
 ul > li {
@@ -167,10 +173,10 @@ ul > li > a {
 }
 
 #nav {
-  display: flex;
   position: sticky;
   top: 0em;
-  background: #3A4552;
+  display: flex;
+  /*background: #3A4552;*/
 }
 
 #nav li {
@@ -180,7 +186,8 @@ ul > li > a {
 }
 
 #nav li a {
-  cursor: pointer;
+  padding: 0 0.5em;
+  border-radius: 0.3em;
 }
 
 #nav svg {
@@ -208,48 +215,58 @@ ul > li > a {
   width: 100%;
   height: 1.8em;
   padding: 0 0.3em 0 2.1em;
+  cursor: pointer;
   transition: background-color 500ms;
   text-align: left;
+  /*color: #ccc;*/
   white-space: nowrap;
-  color: #ccc;
   border: none;
   outline: none;
-  background-color: rgba(255, 255, 255, 0);
+  background-color: rgba(0, 0, 0, 0);
   background-repeat: no-repeat;
   background-position-x: 0.3em;
   background-position-y: center;
+
   background-size: 1.5em;
 }
 
 #tabs button:hover {
   transition: background-color 100ms;
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(0, 0, 0, 0.2);
 }
 
 #tabs button:focus {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(0, 0, 0, 0.2);
 }
 
 #tabs button:active {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(0, 0, 0, 0.2);
 }
 
 #tabs [data-active="true"] {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(0, 0, 0, 0.2);
 }
 
 #tabs button span {
   overflow: hidden;
 }
 
+#tabs [data-pinned="false"] {
+  border-left: 5px solid transparent;
+}
+
 #tabs [data-pinned="true"] {
+  border-top: 2px solid transparent;
+}
+
+#tabs [data-pinned="true"] {
+  position: sticky;
+  top: 0.5em;
   display: inline-block;
   max-width: 1em;
   margin-bottom: 0.3em;
   padding: 0.2em 0.4em 0.5em 1.7em;
-  position: sticky;
-  top: 0.5em;
-  background-color: #3A4552;
+  /*background-color: #3A4552;*/
 }
 
 #tabs [data-pinned="true"] + [data-pinned="true"] {
@@ -268,7 +285,7 @@ ul > li > a {
 }
 
 #tabs [data-muted="true"] {
-  color: #3A4552;
+  /*color: #3A4552;*/
   filter: grayscale(100%) brightness(2);
 }
 

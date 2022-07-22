@@ -1,3 +1,4 @@
+/* global browser */
 //var maintext = document.querySelector("#maintext");
 //var theValue;
 //
@@ -8,11 +9,11 @@
 //
 //function save() {
 //  theValue = maintext.value;
-//  chrome.extension.getBackgroundPage().setValue(theValue);
+//  browser.extension.getBackgroundPage().setValue(theValue);
 //}
 //
 //function show() {
-//  theValue = chrome.extension.getBackgroundPage().getValue();
+//  theValue = browser.extension.getBackgroundPage().getValue();
 //
 //  if (!theValue) {
 //    theValue = "";
@@ -27,55 +28,23 @@ function e(selector) {
   return document.querySelector(selector);
 }
 
-function getTabs(query) {
-  return new Promise((resolve) =>
-    chrome.tabs.query({currentWindow: true, ...query}, resolve)
-  );
-}
-
-function moveTab({id, index}) {
-  return new Promise((resolve) => chrome.tabs.move(id, {index}, resolve));
-}
-
-function createTab() {
-  return new Promise((resolve) =>
-    chrome.tabs.create({active: true}, resolve)
-  );
-}
-
-function selectTab(id) {
-  return new Promise((resolve) =>
-    chrome.tabs.update(id, {active: true}, resolve)
-  );
-}
-
-function duplicateTab(id) {
-  return new Promise((resolve) => chrome.tabs.duplicate(id, resolve));
-}
-
-function pinTab(tab) {
-
-  return new Promise((resolve) => chrome.tabs.update(tab.id, {pinned: !tab.pinned}, resolve));
-}
-
-function removeTab(id) {
-  return new Promise((resolve) => chrome.tabs.remove(id, resolve));
-}
 
 async function sortTabs() {
-  const tabs = await getTabs({pinned: false});
+  const tabs = await browser.tabs.query({currentWindow: true, pinned: false});
   const [{index: first}] = tabs;
   let shouldReorder = false;
   const nextTabs = tabs
-    .map(({id, url, index, title}) => ({
+    .map(({id, url, index, title, cookieStoreId}) => ({
       id,
       url,
       index,
       host: url ? new URL(url).host.split(".").slice(-2).join(".") : "___",
-      title
+      title,
+      cookieStoreId
     }))
     .sort(({title: t1}, {title: t2}) => t1.localeCompare(t2))
     .sort(({host: h1}, {host: h2}) => h1.localeCompare(h2))
+    .sort(({cookieStoreId: c1}, {cookieStoreId: c2}) => c1.localeCompare(c2))
     .map(({id, index}, i) => {
       if (i + first !== index) {
         shouldReorder = true;
@@ -84,13 +53,14 @@ async function sortTabs() {
     });
 
   if (shouldReorder) {
-    await Promise.all(nextTabs.map(moveTab));
+    await Promise.all(nextTabs.map(({id, index}) => browser.tabs.move(id, {index})));
   }
 }
 
 function createTabElement(tab) {
   const $tab = document.createElement("button");
   $tab.dataset.id = tab.id;
+  $tab.dataset.container = tab.cookieStoreId;
   $tab.dataset.pinned = tab.pinned;
   $tab.dataset.status = tab.status;
   $tab.dataset.url = tab.url;
@@ -104,17 +74,17 @@ function createTabElement(tab) {
   $tab.onclick = async (e) => {
     e.preventDefault();
     e.stopPropagation();
-    await selectTab(tab.id);
+    await browser.tabs.update(tab.id, {active: true});
   };
   $tab.ondblclick = async (e) => {
     e.preventDefault();
     e.stopPropagation();
-    await removeTab(tab.id);
+    await browser.tabs.remove(tab.id);
   };
 
   $tab.style.backgroundImage = tab.favIconUrl
     ? `url("${tab.favIconUrl}")`
-    : `url("chrome://favicon/${tab.url}")`;
+    : `url("resource://favicon/${tab.url}")`;
 
   const $title = document.createElement("span");
   $title.textContent = tab.title;
@@ -123,26 +93,36 @@ function createTabElement(tab) {
   return $tab;
 }
 
+
+const containerCache = {};
+const stylesheet = new CSSStyleSheet();
+
+function containerStyles() {
+  const styles = Object.entries(containerCache)
+    .map(([container, {colorCode}]) => (`#tabs button[data-container="${container}"] { border-color: ${colorCode}; }`));
+  stylesheet.replace(styles.join('\n'));
+}
+
 async function render() {
   e("#sort").onclick = async () => {
     await sortTabs();
   };
 
   e("#duplicate").onclick = async () => {
-    const [tab] = await getTabs({active: true});
-    await duplicateTab(tab.id);
+    const [tab] = await browser.tabs.query({currentWindow: true, active: true});
+    await browser.tabs.duplicate(tab.id);
   };
 
   e("#pin").onclick = async () => {
-    const [tab] = await getTabs({active: true});
-    await pinTab(tab);
+    const [tab] = await browser.tabs.query({currentWindow: true, active: true});
+    await browser.tabs.update(tab.id, {pinned: !tab.pinned});
   };
 
   e("html").ondblclick = async (e) => {
-    await createTab();
+    await browser.tabs.create({active: true});
   };
 
-  const tabs = await getTabs();
+  const tabs = await browser.tabs.query({currentWindow: true});
 
   const $tabs = e("#tabs");
   tabs.forEach(tab => {
@@ -165,7 +145,7 @@ async function render() {
     $win.appendChild($tab);
   });
 
-  chrome.tabs.onUpdated.addListener(function (tabId, info, tab) {
+  browser.tabs.onUpdated.addListener(function (tabId, info, tab) {
     const $tabs = e("#tabs");
     $tabs.querySelectorAll(`button[data-id="${tabId}"]`).forEach(($tab) => {
       if ("url" in info) {
@@ -178,7 +158,7 @@ async function render() {
       if ("favIconUrl" in info) {
         $tab.style.backgroundImage = info.favIconUrl
           ? `url("${info.favIconUrl}")`
-          : `url("chrome://favicon/${tab.url}")`;
+          : `url("resource://favicon/${tab.url}")`;
       }
 
       if ("title" in info) {
@@ -194,13 +174,13 @@ async function render() {
         if (info.status === "complete") {
           $tab.style.backgroundImage = tab.favIconUrl
             ? `url("${tab.favIconUrl}")`
-            : `url("chrome://favicon/${tab.url}")`;
+            : `url("resource://favicon/${tab.url}")`;
         }
       }
     });
   });
 
-  chrome.tabs.onCreated.addListener(function (tab) {
+  browser.tabs.onCreated.addListener(function (tab) {
     const $win = e(`#tabs [data-win="${tab.windowId}"]`);
     if (!$win) {
       return;
@@ -213,7 +193,7 @@ async function render() {
       });
   });
 
-  chrome.tabs.onRemoved.addListener(function (tabId) {
+  browser.tabs.onRemoved.addListener(function (tabId) {
     const $tab = e(`button[data-id="${tabId}"]`)
     if (!$tab) {
       return;
@@ -221,7 +201,7 @@ async function render() {
     $tab.remove()
   });
 
-  chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, _tab) {
+  browser.tabs.onUpdated.addListener(function (tabId, changeInfo, _tab) {
     const $tab = e(`button[data-id="${tabId}"]`)
     if (!$tab) {
       return;
@@ -237,12 +217,12 @@ async function render() {
     }
   });
 
-  chrome.tabs.onAttached.addListener(function (tabId, {newWindowId}) {
+  browser.tabs.onAttached.addListener(function (tabId, {newWindowId}) {
     const $win = e(`#tabs [data-win="${newWindowId}"]`);
     if (!$win) {
       return;
     }
-    chrome.tabs.get(tabId, (tab) => {
+    browser.tabs.get(tabId, (tab) => {
       const $tab = createTabElement(tab);
       $win
         .querySelectorAll(`button:nth-child(${tab.index})`)
@@ -252,7 +232,7 @@ async function render() {
     });
   });
 
-  chrome.tabs.onDetached.addListener(function (tabId) {
+  browser.tabs.onDetached.addListener(function (tabId) {
     const $tab = e(`button[data-id="${tabId}"]`)
     if (!$tab) {
       return;
@@ -260,12 +240,12 @@ async function render() {
     $tab.remove()
   });
 
-  chrome.tabs.onMoved.addListener(async function (_tabId, {_toIndex, windowId}) {
+  browser.tabs.onMoved.addListener(async function (_tabId, {_toIndex, windowId}) {
     const $win = e(`#tabs [data-win="${windowId}"]`);
     if (!$win) {
       return;
     }
-    const tabs = await getTabs();
+    const tabs = await browser.tabs.query({currentWindow: true});
     tabs.forEach((tab) => {
       const $tab = $win.querySelector(`button[data-id="${tab.id}"]`);
       if ($tab) {
@@ -274,7 +254,7 @@ async function render() {
     });
   });
 
-  chrome.tabs.onActivated.addListener(function ({tabId, windowId}) {
+  browser.tabs.onActivated.addListener(function ({tabId, windowId}) {
     const $win = e(`#tabs [data-win="${windowId}"]`);
     if (!$win) {
       return;
@@ -290,6 +270,30 @@ async function render() {
         $tab.dataset.active = true;
       });
   });
+
+
+  browser.contextualIdentities.query({}).then(containers => {
+    containers.forEach(function (contextualIdentity) {
+      containerCache[contextualIdentity.cookieStoreId] = contextualIdentity;
+    })
+    containerStyles()
+  })
+
+
+  browser.contextualIdentities.onCreated.addListener(function ({contextualIdentity}) {
+    containerCache[contextualIdentity.cookieStoreId] = contextualIdentity;
+    containerStyles()
+  })
+  browser.contextualIdentities.onUpdated.addListener(function ({contextualIdentity}) {
+    containerCache[contextualIdentity.cookieStoreId] = contextualIdentity;
+    containerStyles()
+  })
+  browser.contextualIdentities.onRemoved.addListener(function ({contextualIdentity}) {
+    delete containerCache[contextualIdentity.cookieStoreId]
+    containerStyles()
+  })
+
+  document.adoptedStyleSheets = [stylesheet];
 }
 
 document.addEventListener("DOMContentLoaded", render, false);
